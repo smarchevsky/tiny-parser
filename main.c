@@ -31,6 +31,8 @@ int get_terminal_width(void)
 #include <termios.h>
 #include <unistd.h>
 
+#include "parser.h"
+
 static struct termios orig_termios;
 
 void set_raw_mode(int enable)
@@ -157,7 +159,7 @@ int read_key(int* out_char)
     return KEY_NONE;
 }
 
-void render_words(const char* str) { /* impl later */ }
+void render_words(const char* str) { parse(str); }
 
 int main(void)
 {

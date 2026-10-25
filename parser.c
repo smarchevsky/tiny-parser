@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MAX_TOKEN 100
+#include "sbo_array.h"
 
 const char* const error_unsupported_unary_op = "unsupported unary operators";
 
@@ -30,28 +30,23 @@ typedef struct {
 
 // clang-format on
 
-Token tokens[MAX_TOKEN];
-size_t tokenNum = 0;
-
-#define tokenStackPush(...) (assert(tokenNum < MAX_TOKEN), tokens[tokenNum++] = (__VA_ARGS__))
-#define tokenStackPop() (assert(tokenNum > 0 && tokenNum <= MAX_TOKEN), tokens[--tokenNum])
-#define tokenStackTop() (assert(tokenNum > 0 && tokenNum <= MAX_TOKEN), tokens[tokenNum - 1])
-#define tokenStackClear() (tokenNum = 0)
-#define tokenStackIsEmpty() (tokenNum == 0)
+ARR_DECLARE(Token, 100)
+TokenArray;
+TokenArray tokens;
 
 bool isident(char c) { return isalnum(c) || c == '_'; }
 
 const char* evalNum(const char* str)
 {
-    const char* strEnd = str;
+    char* strEnd = str;
     if (isdigit(*str) || *str == '.') {
         double val = strtod(str, &strEnd);
         if (strEnd != str) {
-            if (!tokenStackIsEmpty() && tokenStackTop().type == TokenType_Negate) {
-                tokenStackPop();
-                tokenStackPush((Token) { .type = TokenType_Num, .number = -val });
+            if (tokens.size != 0 && arr_top(tokens).type == TokenType_Negate) {
+                arr_pop(tokens);
+                arr_push(tokens, (Token) { .type = TokenType_Num, .number = -val });
             } else {
-                tokenStackPush((Token) { .type = TokenType_Num, .number = val });
+                arr_push(tokens, (Token) { .type = TokenType_Num, .number = val });
             }
         }
     }
@@ -66,14 +61,15 @@ const char* evalSymbol(const char* str)
         while (isident(*str)) {
             str++;
         }
-        tokenStackPush((Token) { .type = TokenType_Symbol, .string = (String) { .start = strBegin, .size = (size_t)str - (size_t)strBegin } });
+        arr_push(tokens, (Token) { .type = TokenType_Symbol, .string = (String) { .start = strBegin, .size = (size_t)str - (size_t)strBegin } });
     }
     return str;
 }
 
 const char* tokenize(const char* str)
 {
-    tokenStackClear();
+    arr_init(tokens);
+
     const char* errorMsg = NULL;
     const char* newPos;
 
@@ -100,18 +96,18 @@ const char* tokenize(const char* str)
                 goto ErrorExit;
             }
 
-            if (tokenStackIsEmpty()) {
-                tokenStackPush((Token) { .type = TokenType_Negate });
+            if (tokens.size == 0) {
+                arr_push(tokens, (Token) { .type = TokenType_Negate });
 
             } else {
                 if (isident(str[1])) {
-                    TokenType topType = tokenStackTop().type;
+                    TokenType topType = arr_top(tokens).type;
                     if (topType == TokenType_Symbol || topType == TokenType_Num)
-                        tokenStackPush((Token) { .type = TokenType_Minus });
+                        arr_push(tokens, (Token) { .type = TokenType_Minus });
                     else
-                        tokenStackPush((Token) { .type = TokenType_Negate });
+                        arr_push(tokens, (Token) { .type = TokenType_Negate });
                 } else {
-                    tokenStackPush((Token) { .type = TokenType_Minus });
+                    arr_push(tokens, (Token) { .type = TokenType_Minus });
                 }
             }
             str++;
@@ -123,13 +119,13 @@ const char* tokenize(const char* str)
                 errorMsg = error_unsupported_unary_op;
                 goto ErrorExit;
             }
-            tokenStackPush((Token) { TokenType_Plus });
+            arr_push(tokens, (Token) { TokenType_Plus });
             str++;
             continue;
         }
 
         case '*': {
-            tokenStackPush((Token) { TokenType_Mul });
+            arr_push(tokens, (Token) { TokenType_Mul });
             str++;
             continue;
         }
@@ -150,9 +146,9 @@ int parse(const char* exp)
         return 1;
     }
 
-    for (size_t i = 0; i < tokenNum; ++i) {
-        const Token t = tokens[i];
-        printf("\nToken %d: ", i);
+    for (size_t i = 0; i < tokens.size; ++i) {
+        const Token t = tokens.data[i];
+        printf("\nToken %zu: ", i);
 
         switch (t.type) {
         case TokenType_Negate: {
@@ -178,7 +174,10 @@ int parse(const char* exp)
         case TokenType_Symbol: {
             printf("Symbol: %.*s", (int)t.string.size, t.string.start);
         } break;
+        case TokenType_Invalid:
+        case TokenType_Div:
+            break;
         }
     }
-    return tokenNum;
+    return tokens.size;
 }
