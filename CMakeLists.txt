@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 project(TinyParser LANGUAGES C)
-
+set(CMAKE_C_STANDARD 23)
 
 
 add_executable(TinyParser main.c
@@ -13,6 +13,4 @@ install(TARGETS TinyParser
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-target_compile_definitions(TinyParser PRIVATE
-    $<$<CONFIG:Debug>:_DEBUG>
-)
+target_compile_definitions(TinyParser PRIVATE $<$<CONFIG:Debug>:_DEBUG>)
