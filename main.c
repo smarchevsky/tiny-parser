@@ -45,7 +45,16 @@ void set_raw_mode(int enable)
     }
 }
 
-int get_char(void) { return getchar(); }
+int get_char(void)
+{
+#if defined(_WIN32) || defined(_WIN64)
+    return getchar();
+#else
+    unsigned char c;
+    ssize_t n = read(STDIN_FILENO, &c, 1);
+    return (n == 1) ? c : -1;
+#endif
+}
 
 int has_key_waiting(void)
 {
