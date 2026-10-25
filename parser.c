@@ -35,6 +35,8 @@ TokenStack tokens;
 ARR_DECLARE(OpHoldingStack, TokenType, 10);
 OpHoldingStack opstack;
 
+void pushToken(Token t) { arr_push(tokens, t); }
+
 int get_precedence(TokenType op)
 {
     switch (op) {
@@ -60,9 +62,9 @@ const char* evalNum(const char* str)
         if (strEnd != str) {
             if (opstack.size != 0 && arr_top(opstack) == TokenType_Negate) {
                 arr_pop(opstack);
-                arr_push(tokens, (Token) { .type = TokenType_Num, .number = -val });
+                pushToken((Token) { .type = TokenType_Num, .number = -val });
             } else {
-                arr_push(tokens, (Token) { .type = TokenType_Num, .number = val });
+                pushToken((Token) { .type = TokenType_Num, .number = val });
             }
         }
     }
@@ -74,21 +76,30 @@ const char* evalSymbol(const char* str)
     const char* strBegin = str;
     if (isalpha(*str) || *str == '_') {
         str++;
-        while (isident(*str)) {
+        while (isident(*str))
             str++;
-        }
-        arr_push(tokens, (Token) { .type = TokenType_Symbol, .string = (String) //
-                             { .start = strBegin, .size = (size_t)str - (size_t)strBegin } });
+
+        pushToken((Token) { .type = TokenType_Symbol, .string = (String) //
+            { .start = strBegin, .size = (size_t)str - (size_t)strBegin } });
     }
     return str;
 }
 
-void pushOp(TokenType op)
+void pushOp(TokenType opNew)
 {
-    arr_push(opstack, op);
-    if (opstack.size == 0) {
-    } else {
+    while (opstack.size > 0 && is_operator(arr_top(opstack))) {
+        char opTop = arr_top(opstack);
+
+        if (get_precedence(opNew) < get_precedence(opTop)) {
+            pushToken((Token) { .type = arr_pop(opstack) });
+            // double b = pop_num(&eval_stack);
+            // double a = pop_num(&eval_stack);
+            // push_num(&eval_stack, apply_operator(o2, a, b));
+        } else {
+            break;
+        }
     }
+    arr_push(opstack, opNew);
 }
 
 const char* tokenize(const char* str)
@@ -165,6 +176,9 @@ const char* tokenize(const char* str)
 
         str++;
     }
+    while (opstack.size) {
+        pushToken((Token) { .type = arr_pop(opstack) });
+    }
 
 ErrorExit:
     return errorMsg;
@@ -177,10 +191,9 @@ int parse(const char* exp)
         printf("Error: %s.", errorMsg);
         return 1;
     }
-
+    printf("RPN: ");
     for (size_t i = 0; i < tokens.size; ++i) {
         const Token t = tokens.data[i];
-        printf("\nToken %zu: ", i);
 
         switch (t.type) {
         case TokenType_Negate: {
@@ -188,28 +201,34 @@ int parse(const char* exp)
         } break;
 
         case TokenType_Minus: {
-            printf("Minus");
+            printf("sub");
         } break;
 
         case TokenType_Plus: {
-            printf("Plus");
+            printf("add");
         } break;
 
         case TokenType_Mul: {
-            printf("Mul");
+            printf("mul");
+        } break;
+
+        case TokenType_Div: {
+            printf("div");
         } break;
 
         case TokenType_Num: {
-            printf("Number: %f", t.number);
+            printf("%.2f", t.number);
         } break;
 
         case TokenType_Symbol: {
-            printf("Symbol: %.*s", (int)t.string.size, t.string.start);
+            printf("%.*s", (int)t.string.size, t.string.start);
         } break;
-        case TokenType_Invalid:
-        case TokenType_Div:
-            break;
+
+        case TokenType_Invalid: {
+        } break;
         }
+        printf("  ");
+        fflush(stdout);
     }
     return tokens.size;
 }

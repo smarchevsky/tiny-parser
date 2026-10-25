@@ -159,11 +159,14 @@ int read_key(int* out_char)
     return KEY_NONE;
 }
 
-void render_words(const char* str) { parse(str); }
-
 int main(void)
 {
-    char input[MAX_INPUT_LEN] = "3 + 5";
+#if defined(_DEBUG)
+    parse("3 + 5");
+    return 0;
+#endif
+
+    char input[MAX_INPUT_LEN] = "3 + 5 * 2 - 3";
     size_t len = strlen(input);
     size_t cursor_pos = len;
 
@@ -188,7 +191,7 @@ int main(void)
         printf("\r\033[J"); //            clear from start of Input line to the bottom of terminal screen
         printf("%s%s", PROMPT, input); // render prompt and input
         printf("\033[s\n"); //            save cursor position RIGHT HERE (at end of input text)
-        render_words(input); //           render words on individual lines below
+        parse(input); //           render words on individual lines below
         printf("\033[u"); //              restore cursor directly to the end of the input line
 
         // reposition cursor within wrapped input line to match cursor_pos
