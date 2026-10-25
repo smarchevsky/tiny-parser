@@ -1,7 +1,9 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <limits.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -10,7 +12,7 @@
 const char* const error_unsupported_unary_op = "unsupported unary operators";
 
 // clang-format off
-typedef enum {
+typedef enum : uint8_t {
     TokenType_Invalid, TokenType_Num, TokenType_Symbol, TokenType_Negate,
     TokenType_Minus, TokenType_Plus, TokenType_Mul, TokenType_Div
 } TokenType;
@@ -29,10 +31,10 @@ typedef struct {
 } Token;
 
 
-ARR_DECLARE(TokenStack, Token, 100);
+ARR_DECLARE(TokenStack, Token, 10);
 TokenStack tokens;
 
-ARR_DECLARE(OpHoldingStack, TokenType, 10);
+ARR_DECLARE(OpHoldingStack, TokenType, 4);
 OpHoldingStack opstack;
 
 void pushToken(Token t) { arr_push(tokens, t); }
@@ -40,15 +42,17 @@ void pushToken(Token t) { arr_push(tokens, t); }
 int get_precedence(TokenType op)
 {
     switch (op) {
-    case TokenType_Plus:  return 2;
-    case TokenType_Minus: return 2;
-    case TokenType_Mul:   return 3;
-    case TokenType_Div:   return 3;
+    case TokenType_Plus:   return 2;
+    case TokenType_Minus:  return 2;
+    case TokenType_Mul:    return 3;
+    case TokenType_Div:    return 3;
+    case TokenType_Negate: return 1000;
     default: return 0;
     }
 }
 
-bool is_operator(TokenType tokenType) { return tokenType >= TokenType_Minus && tokenType <= TokenType_Div; }
+bool is_op_binary(TokenType tokenType) { return tokenType >= TokenType_Minus && tokenType <= TokenType_Div; }
+bool is_op_unary(TokenType tokenType) { return tokenType == TokenType_Negate; }
 
 // clang-format on
 
@@ -60,12 +64,7 @@ const char* evalNum(const char* str)
     if (isdigit(*str) || *str == '.') {
         double val = strtod(str, (char**)(void*)&strEnd);
         if (strEnd != str) {
-            if (opstack.size != 0 && arr_top(opstack) == TokenType_Negate) {
-                arr_pop(opstack);
-                pushToken((Token) { .type = TokenType_Num, .number = -val });
-            } else {
-                pushToken((Token) { .type = TokenType_Num, .number = val });
-            }
+            pushToken((Token) { .type = TokenType_Num, .number = val });
         }
     }
     return strEnd;
@@ -89,42 +88,56 @@ bool tryResolveArithmetic()
 {
     // return false;
     while (opstack.size) {
-        if (tokens.size < 2)
-            return false;
+        if (is_op_unary(arr_top(opstack))) {
+            if (tokens.size < 1)
+                return false;
 
-        Token t0 = tokens.data[tokens.size - 1];
-        Token t1 = tokens.data[tokens.size - 2];
-        TokenType op = arr_top(opstack);
-        if (t0.type != TokenType_Num || t1.type != TokenType_Num)
+            if (arr_top(opstack) == TokenType_Negate && arr_top(tokens).type == TokenType_Num) {
+                arr_pop(opstack);
+                tokens.data[tokens.size - 1].number *= -1;
+                return true;
+            } else
+                return false;
+
+        } else if (is_op_binary(arr_top(opstack))) {
+            if (tokens.size < 2)
+                return false;
+
+            Token t0 = tokens.data[tokens.size - 1];
+            Token t1 = tokens.data[tokens.size - 2];
+            TokenType op = arr_top(opstack);
+            if (t0.type != TokenType_Num || t1.type != TokenType_Num)
+                return false;
+            arr_pop(tokens);
+            arr_pop(tokens);
+            arr_pop(opstack);
+            double result = 0.0;
+            switch (op) {
+            case TokenType_Minus: {
+                result = t1.number - t0.number;
+            } break;
+            case TokenType_Plus: {
+                result = t1.number + t0.number;
+            } break;
+            case TokenType_Mul: {
+                result = t1.number * t0.number;
+            } break;
+            case TokenType_Div: {
+                result = t1.number / t0.number;
+            } break;
+            default:
+                break;
+            }
+            pushToken((Token) { .type = TokenType_Num, .number = result });
+        } else
             return false;
-        arr_pop(tokens);
-        arr_pop(tokens);
-        arr_pop(opstack);
-        double result = 0.0;
-        switch (op) {
-        case TokenType_Minus: {
-            result = t1.number - t0.number;
-        } break;
-        case TokenType_Plus: {
-            result = t1.number + t0.number;
-        } break;
-        case TokenType_Mul: {
-            result = t1.number * t0.number;
-        } break;
-        case TokenType_Div: {
-            result = t1.number / t0.number;
-        } break;
-        default:
-            break;
-        }
-        pushToken((Token) { .type = TokenType_Num, .number = result });
     }
     return true;
 }
 
 void pushOp(TokenType opNew)
 {
-    while (opstack.size > 0 && is_operator(arr_top(opstack))) {
+    while (opstack.size > 0) {
         char opTop = arr_top(opstack);
 
         if (get_precedence(opNew) <= get_precedence(opTop)) {
