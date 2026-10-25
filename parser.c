@@ -85,16 +85,52 @@ const char* evalSymbol(const char* str)
     return str;
 }
 
+bool tryResolveArithmetic()
+{
+    // return false;
+    while (opstack.size) {
+        if (tokens.size < 2)
+            return false;
+
+        Token t0 = tokens.data[tokens.size - 1];
+        Token t1 = tokens.data[tokens.size - 2];
+        TokenType op = arr_top(opstack);
+        if (t0.type != TokenType_Num || t1.type != TokenType_Num)
+            return false;
+        arr_pop(tokens);
+        arr_pop(tokens);
+        arr_pop(opstack);
+        double result = 0.0;
+        switch (op) {
+        case TokenType_Minus: {
+            result = t1.number - t0.number;
+        } break;
+        case TokenType_Plus: {
+            result = t1.number + t0.number;
+        } break;
+        case TokenType_Mul: {
+            result = t1.number * t0.number;
+        } break;
+        case TokenType_Div: {
+            result = t1.number / t0.number;
+        } break;
+        default:
+            break;
+        }
+        pushToken((Token) { .type = TokenType_Num, .number = result });
+    }
+    return true;
+}
+
 void pushOp(TokenType opNew)
 {
     while (opstack.size > 0 && is_operator(arr_top(opstack))) {
         char opTop = arr_top(opstack);
 
-        if (get_precedence(opNew) < get_precedence(opTop)) {
-            pushToken((Token) { .type = arr_pop(opstack) });
-            // double b = pop_num(&eval_stack);
-            // double a = pop_num(&eval_stack);
-            // push_num(&eval_stack, apply_operator(o2, a, b));
+        if (get_precedence(opNew) <= get_precedence(opTop)) {
+            if (!tryResolveArithmetic())
+                pushToken((Token) { .type = arr_pop(opstack) });
+
         } else {
             break;
         }
@@ -177,7 +213,8 @@ const char* tokenize(const char* str)
         str++;
     }
     while (opstack.size) {
-        pushToken((Token) { .type = arr_pop(opstack) });
+        if (!tryResolveArithmetic())
+            pushToken((Token) { .type = arr_pop(opstack) });
     }
 
 ErrorExit:
@@ -191,13 +228,19 @@ int parse(const char* exp)
         printf("Error: %s.", errorMsg);
         return 1;
     }
-    printf("RPN: ");
+
+    if (tokens.size == 1 && tokens.data[0].type == TokenType_Num) {
+        printf("RES: ");
+    } else {
+        printf("RPN: ");
+    }
+
     for (size_t i = 0; i < tokens.size; ++i) {
         const Token t = tokens.data[i];
 
         switch (t.type) {
         case TokenType_Negate: {
-            printf("Negate");
+            printf("negate");
         } break;
 
         case TokenType_Minus: {

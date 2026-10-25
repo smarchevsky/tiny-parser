@@ -162,11 +162,11 @@ int read_key(int* out_char)
 int main(void)
 {
 #if defined(_DEBUG)
-    parse("3 + 5");
+    parse("5 / 2 +");
     return 0;
 #endif
 
-    char input[MAX_INPUT_LEN] = "3 + 5 * 2 - 3";
+    char input[MAX_INPUT_LEN] = "5 * 2";
     size_t len = strlen(input);
     size_t cursor_pos = len;
 
