@@ -5,13 +5,13 @@
 #include <string.h>
 
 // clang-format off
-#define ARR_DECLARE(TypeName, sbo_size) \
+#define ARR_DECLARE(ArrayName, TypeName, sbo_size) \
 typedef struct { \
     TypeName* data; \
     size_t cap; \
     size_t size; \
     TypeName sbo[sbo_size]; \
-}
+} ArrayName;
 
 #define arr_init(arr) \
 do { \
@@ -36,11 +36,11 @@ do { \
         size_t new_cap = arr.cap * 2; \
         void* new_data; \
         if (arr.data == arr.sbo) { \
-            new_data = malloc(new_cap * sizeof(arr.data[0])); \
+            new_data = malloc(new_cap * sizeof(arr.data[0])); /* NOLINT(clang-analyzer-optin.portability.UnixAPI) */ \
             assert(new_data && "malloc failed"); \
             memcpy(new_data, arr.sbo, arr.size * sizeof(arr.data[0])); /* NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) */ \
         } else { \
-            new_data = realloc(arr.data, new_cap * sizeof(arr.data[0])); \
+            new_data = realloc(arr.data, new_cap * sizeof(arr.data[0])); /* NOLINT(clang-analyzer-optin.portability.UnixAPI) */ \
             assert(new_data && "realloc failed"); \
         } \
         arr.data = new_data; \

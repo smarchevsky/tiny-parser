@@ -28,22 +28,38 @@ typedef struct {
     };
 } Token;
 
-// clang-format on
 
-ARR_DECLARE(Token, 100)
-TokenArray;
-TokenArray tokens;
+ARR_DECLARE(TokenStack, Token, 100);
+TokenStack tokens;
+
+ARR_DECLARE(OpHoldingStack, TokenType, 10);
+OpHoldingStack opstack;
+
+int get_precedence(TokenType op)
+{
+    switch (op) {
+    case TokenType_Plus:  return 2;
+    case TokenType_Minus: return 2;
+    case TokenType_Mul:   return 3;
+    case TokenType_Div:   return 3;
+    default: return 0;
+    }
+}
+
+bool is_operator(TokenType tokenType) { return tokenType >= TokenType_Minus && tokenType <= TokenType_Div; }
+
+// clang-format on
 
 bool isident(char c) { return isalnum(c) || c == '_'; }
 
 const char* evalNum(const char* str)
 {
-    char* strEnd = str;
+    const char* strEnd = str;
     if (isdigit(*str) || *str == '.') {
-        double val = strtod(str, &strEnd);
+        double val = strtod(str, (char**)(void*)&strEnd);
         if (strEnd != str) {
-            if (tokens.size != 0 && arr_top(tokens).type == TokenType_Negate) {
-                arr_pop(tokens);
+            if (opstack.size != 0 && arr_top(opstack) == TokenType_Negate) {
+                arr_pop(opstack);
                 arr_push(tokens, (Token) { .type = TokenType_Num, .number = -val });
             } else {
                 arr_push(tokens, (Token) { .type = TokenType_Num, .number = val });
@@ -61,14 +77,24 @@ const char* evalSymbol(const char* str)
         while (isident(*str)) {
             str++;
         }
-        arr_push(tokens, (Token) { .type = TokenType_Symbol, .string = (String) { .start = strBegin, .size = (size_t)str - (size_t)strBegin } });
+        arr_push(tokens, (Token) { .type = TokenType_Symbol, .string = (String) //
+                             { .start = strBegin, .size = (size_t)str - (size_t)strBegin } });
     }
     return str;
 }
 
+void pushOp(TokenType op)
+{
+    arr_push(opstack, op);
+    if (opstack.size == 0) {
+    } else {
+    }
+}
+
 const char* tokenize(const char* str)
 {
-    arr_init(tokens);
+    arr_clear(tokens);
+    arr_clear(opstack);
 
     const char* errorMsg = NULL;
     const char* newPos;
@@ -97,17 +123,17 @@ const char* tokenize(const char* str)
             }
 
             if (tokens.size == 0) {
-                arr_push(tokens, (Token) { .type = TokenType_Negate });
+                pushOp(TokenType_Negate);
 
             } else {
                 if (isident(str[1])) {
-                    TokenType topType = arr_top(tokens).type;
+                    TokenType topType = arr_top(opstack);
                     if (topType == TokenType_Symbol || topType == TokenType_Num)
-                        arr_push(tokens, (Token) { .type = TokenType_Minus });
+                        pushOp(TokenType_Minus);
                     else
-                        arr_push(tokens, (Token) { .type = TokenType_Negate });
+                        pushOp(TokenType_Negate);
                 } else {
-                    arr_push(tokens, (Token) { .type = TokenType_Minus });
+                    pushOp(TokenType_Minus);
                 }
             }
             str++;
@@ -119,13 +145,19 @@ const char* tokenize(const char* str)
                 errorMsg = error_unsupported_unary_op;
                 goto ErrorExit;
             }
-            arr_push(tokens, (Token) { TokenType_Plus });
+            pushOp(TokenType_Plus);
             str++;
             continue;
         }
 
         case '*': {
-            arr_push(tokens, (Token) { TokenType_Mul });
+            pushOp(TokenType_Mul);
+            str++;
+            continue;
+        }
+
+        case '/': {
+            pushOp(TokenType_Div);
             str++;
             continue;
         }
