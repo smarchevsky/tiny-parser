@@ -47,7 +47,9 @@ int get_precedence(TokenType op)
     case TokenType_Mul:    return 3;
     case TokenType_Div:    return 3;
     case TokenType_Negate: return 1000;
-    default: return 0;
+    default:
+    assert(false && "no existing precedence for operator");
+    return 0;
     }
 }
 
@@ -165,16 +167,6 @@ const char* tokenize(const char* str)
             continue;
         }
 
-        if ((newPos = evalSymbol(str)) != str) {
-            str = newPos;
-            continue;
-        }
-
-        if ((newPos = evalNum(str)) != str) {
-            str = newPos;
-            continue;
-        }
-
         switch (*str) {
         case '-': {
             if (str[1] == '-') {
@@ -221,10 +213,23 @@ const char* tokenize(const char* str)
             str++;
             continue;
         }
+
+        default: {
+            if ((newPos = evalSymbol(str)) != str) {
+                str = newPos;
+                continue;
+            }
+
+            if ((newPos = evalNum(str)) != str) {
+                str = newPos;
+                continue;
+            }
+        }
         }
 
         str++;
     }
+
     while (opstack.size) {
         if (!tryResolveArithmetic())
             pushToken((Token) { .type = arr_pop(opstack) });
@@ -238,7 +243,7 @@ int parse(const char* exp)
 {
     const char* errorMsg = tokenize(exp);
     if (errorMsg) {
-        printf("Error: %s.", errorMsg);
+        printf("ERR: %s.", errorMsg);
         return 1;
     }
 
