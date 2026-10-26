@@ -183,7 +183,7 @@ const char* tokenize(const char* str)
                 break;
             }
 
-            TokenType opTop = arr_top(opstack);
+            TokenType opTop = arr_top(tokens).type;
             bool mustNegate = is_op_binary(opTop) || opTop == TokenType_ParOpen;
             pushOp(mustNegate ? TokenType_Negate : TokenType_Sub);
             break;
