@@ -161,12 +161,13 @@ int read_key(int* out_char)
 
 int main(void)
 {
+    char input[MAX_INPUT_LEN] = "-1 * -(-(-5)+ -7)";
 #if defined(_DEBUG)
-    parse("5 / 2 +");
+    printf("Exp: %s\n", input);
+    parse(input);
     return 0;
 #endif
 
-    char input[MAX_INPUT_LEN] = "5 * 2";
     size_t len = strlen(input);
     size_t cursor_pos = len;
 
