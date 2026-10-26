@@ -23,9 +23,9 @@ typedef struct {
 
 typedef struct {
     TokenType type;
-    //union { String string;
+    union { String string;
         double number;
-    //};
+    };
 } Token;
 
 
@@ -80,8 +80,8 @@ const char* evalSymbol(const char* str)
         while (isident(*str))
             str++;
 
-        // pushToken((Token) { .type = TokenType_Symbol, .string = (String) //
-        //     { .start = strBegin, .size = (size_t)str - (size_t)strBegin } });
+        pushToken((Token) { .type = TokenType_Symbol, .string = (String) //
+            { .start = strBegin, .size = (size_t)str - (size_t)strBegin } });
     }
     return str;
 }
@@ -269,7 +269,7 @@ int parse(const char* exp)
         case TokenType_ParOpen: { printf("("); } break;
         case TokenType_ParClose: { printf(")"); } break;
         case TokenType_Num:      { printf("%.2f", t.number); } break;
-        //case TokenType_Symbol: { printf("%.*s", (int)t.string.size, t.string.start); } break;
+        case TokenType_Symbol: { printf("%.*s", (int)t.string.size, t.string.start); } break;
         case TokenType_Invalid: { } break;
         }
         // clang-format on
