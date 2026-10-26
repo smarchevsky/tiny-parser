@@ -161,8 +161,9 @@ int read_key(int* out_char)
 
 int main(void)
 {
-    char input[MAX_INPUT_LEN] = "-1 * -(-(-5)+ -7)";
+    char input[MAX_INPUT_LEN] = "-1-(-4)";
 #if defined(_DEBUG)
+
     printf("Exp: %s\n", input);
     parse(input);
     return 0;

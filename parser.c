@@ -40,13 +40,13 @@ void pushToken(Token t) { arr_push(tokens, t); }
 int get_precedence(TokenType op)
 {
     switch (op) {
-    case TokenType_ParClose: return 0;
-    case TokenType_Plus:   return 2;
-    case TokenType_Minus:  return 2;
-    case TokenType_Mul:    return 3;
-    case TokenType_Div:    return 3;
-    case TokenType_ParOpen: return 56;
-    case TokenType_Negate: return 55;
+    case TokenType_ParClose: return 1;
+    case TokenType_ParOpen: return 0;
+    case TokenType_Plus:   return 4;
+    case TokenType_Minus:  return 4;
+    case TokenType_Mul:    return 5;
+    case TokenType_Div:    return 5;
+    case TokenType_Negate: return 20;
     default:
     assert(false && "no existing precedence for operator");
     return 0;
@@ -88,71 +88,76 @@ const char* evalSymbol(const char* str)
 
 bool tryResolveArithmetic()
 {
-    // return false;
-    while (opstack.size) {
-        if (is_op_unary(arr_top(opstack))) {
-            if (tokens.size < 1)
-                return false;
-
-            if (arr_top(opstack) == TokenType_Negate && arr_top(tokens).type == TokenType_Num) {
-                arr_pop(opstack);
-                tokens.data[tokens.size - 1].number *= -1;
-                return true;
-            } else
-                return false;
-
-        } else if (is_op_binary(arr_top(opstack))) {
-            if (tokens.size < 2)
-                return false;
-
-            Token t0 = tokens.data[tokens.size - 1];
-            Token t1 = tokens.data[tokens.size - 2];
-            TokenType op = arr_top(opstack);
-            if (t0.type != TokenType_Num || t1.type != TokenType_Num)
-                return false;
-            arr_pop(tokens);
-            arr_pop(tokens);
+    if (opstack.size >= 2) {
+        if (opstack.data[opstack.size - 1] == TokenType_ParClose
+            && opstack.data[opstack.size - 2] == TokenType_ParOpen) {
             arr_pop(opstack);
-            double result = 0.0;
-            switch (op) {
-            case TokenType_Minus: {
-                result = t1.number - t0.number;
-            } break;
-            case TokenType_Plus: {
-                result = t1.number + t0.number;
-            } break;
-            case TokenType_Mul: {
-                result = t1.number * t0.number;
-            } break;
-            case TokenType_Div: {
-                result = t1.number / t0.number;
-            } break;
-            default:
-                break;
-            }
-            pushToken((Token) { .type = TokenType_Num, .number = result });
+            arr_pop(opstack);
+            return true;
+        }
+    }
+
+    // return false;
+
+    if (is_op_unary(arr_top(opstack))) {
+        if (tokens.size < 1)
+            return false;
+
+        if (arr_top(opstack) == TokenType_Negate && arr_top(tokens).type == TokenType_Num) {
+            arr_pop(opstack);
+            tokens.data[tokens.size - 1].number *= -1;
+            return true;
         } else
             return false;
     }
-    return true;
+
+    if (is_op_binary(arr_top(opstack))) {
+        if (tokens.size < 2)
+            return false;
+
+        Token t0 = tokens.data[tokens.size - 1];
+        Token t1 = tokens.data[tokens.size - 2];
+        TokenType op = arr_top(opstack);
+        if (t0.type != TokenType_Num || t1.type != TokenType_Num)
+            return false;
+        arr_pop(tokens);
+        arr_pop(tokens);
+        arr_pop(opstack);
+        double result = 0.0;
+        switch (op) {
+        case TokenType_Minus: {
+            result = t1.number - t0.number;
+        } break;
+        case TokenType_Plus: {
+            result = t1.number + t0.number;
+        } break;
+        case TokenType_Mul: {
+            result = t1.number * t0.number;
+        } break;
+        case TokenType_Div: {
+            result = t1.number / t0.number;
+        } break;
+        default:
+            break;
+        }
+        pushToken((Token) { .type = TokenType_Num, .number = result });
+        return true;
+    }
+
+    return false;
 }
 
 void pushOp(TokenType opNew)
 {
     while (opstack.size) {
-        TokenType opTop = arr_top(opstack);
-        if (opTop == TokenType_ParOpen) {
-            arr_pop(opstack);
-            break;
-        }
-        if (get_precedence(opNew) <= get_precedence(opTop)) {
+        if (get_precedence(opNew) <= get_precedence(arr_top(opstack))) {
             if (!tryResolveArithmetic())
                 pushToken((Token) { .type = arr_pop(opstack) });
-
         } else {
             break;
         }
     }
+
     arr_push(opstack, opNew);
 }
 
@@ -175,18 +180,12 @@ const char* tokenize(const char* str)
 
             if (tokens.size == 0) {
                 pushOp(TokenType_Negate);
-
-            } else {
-                if (isident(str[1]) || str[1] == '(') {
-                    TokenType topType = arr_top(opstack);
-                    if (is_op_binary(topType) || topType == TokenType_ParOpen)
-                        pushOp(TokenType_Negate);
-                    else
-                        pushOp(TokenType_Minus);
-                } else {
-                    pushOp(TokenType_Minus);
-                }
+                break;
             }
+
+            TokenType opTop = arr_top(opstack);
+            bool mustNegate = is_op_binary(opTop) || opTop == TokenType_ParOpen;
+            pushOp(mustNegate ? TokenType_Negate : TokenType_Minus);
             break;
         }
 
@@ -215,8 +214,6 @@ const char* tokenize(const char* str)
 
         case ')': {
             pushOp(TokenType_ParClose);
-            if (opstack.size)
-                arr_pop(opstack);
             break;
         }
 
