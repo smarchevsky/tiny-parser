@@ -12,7 +12,7 @@
 // clang-format off
 typedef enum : uint8_t {
     TokenType_Invalid, TokenType_Num, TokenType_Symbol, TokenType_Negate,
-    TokenType_Minus, TokenType_Plus, TokenType_Mul, TokenType_Div,
+    TokenType_Sub, TokenType_Add, TokenType_Mul, TokenType_Div,
     TokenType_ParOpen, TokenType_ParClose
 } TokenType;
 
@@ -42,8 +42,8 @@ int get_precedence(TokenType op)
     switch (op) {
     case TokenType_ParClose: return 1;
     case TokenType_ParOpen: return 0;
-    case TokenType_Plus:   return 4;
-    case TokenType_Minus:  return 4;
+    case TokenType_Add:   return 4;
+    case TokenType_Sub:  return 4;
     case TokenType_Mul:    return 5;
     case TokenType_Div:    return 5;
     case TokenType_Negate: return 20;
@@ -53,7 +53,7 @@ int get_precedence(TokenType op)
     }
 }
 
-bool is_op_binary(TokenType tokenType) { return tokenType >= TokenType_Minus && tokenType <= TokenType_Div; }
+bool is_op_binary(TokenType tokenType) { return tokenType >= TokenType_Sub && tokenType <= TokenType_Div; }
 bool is_op_unary(TokenType tokenType) { return tokenType == TokenType_Negate; }
 
 // clang-format on
@@ -125,10 +125,10 @@ bool tryResolveArithmetic()
         arr_pop(opstack);
         double result = 0.0;
         switch (op) {
-        case TokenType_Minus: {
+        case TokenType_Sub: {
             result = t1.number - t0.number;
         } break;
-        case TokenType_Plus: {
+        case TokenType_Add: {
             result = t1.number + t0.number;
         } break;
         case TokenType_Mul: {
@@ -185,7 +185,7 @@ const char* tokenize(const char* str)
 
             TokenType opTop = arr_top(opstack);
             bool mustNegate = is_op_binary(opTop) || opTop == TokenType_ParOpen;
-            pushOp(mustNegate ? TokenType_Negate : TokenType_Minus);
+            pushOp(mustNegate ? TokenType_Negate : TokenType_Sub);
             break;
         }
 
@@ -193,7 +193,7 @@ const char* tokenize(const char* str)
             if (str[1] == '+')
                 return "unsupported ++";
 
-            pushOp(TokenType_Plus);
+            pushOp(TokenType_Add);
             break;
         }
 
@@ -262,8 +262,8 @@ int parse(const char* exp)
         // clang-format off
         switch (t.type) {
         case TokenType_Negate: { printf("negate"); } break;
-        case TokenType_Minus:  { printf("sub"); } break;
-        case TokenType_Plus:   { printf("add"); } break;
+        case TokenType_Sub:  { printf("sub"); } break;
+        case TokenType_Add:   { printf("add"); } break;
         case TokenType_Mul:    { printf("mul"); } break;
         case TokenType_Div:    { printf("div"); } break;
         case TokenType_ParOpen: { printf("("); } break;
