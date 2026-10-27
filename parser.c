@@ -60,7 +60,7 @@ bool is_op_unary(TokenType tokenType) { return tokenType == TokenType_Negate; }
 
 bool isident(char c) { return isalnum(c) || c == '_'; }
 
-const char* evalNum(const char* str)
+const char* readNum(const char* str)
 {
     const char* strEnd = str;
     if (isdigit(*str) || *str == '.') {
@@ -72,7 +72,7 @@ const char* evalNum(const char* str)
     return strEnd;
 }
 
-const char* evalSymbol(const char* str)
+const char* readSymbol(const char* str)
 {
     const char* strBegin = str;
     if (isalpha(*str) || *str == '_') {
@@ -86,7 +86,7 @@ const char* evalSymbol(const char* str)
     return str;
 }
 
-bool tryResolveArithmetic()
+bool evaluate()
 {
     if (opstack.size >= 2) {
         if (opstack.data[opstack.size - 1] == TokenType_ParClose
@@ -151,7 +151,7 @@ void pushOp(TokenType opNew)
 {
     while (opstack.size) {
         if (get_precedence(opNew) <= get_precedence(arr_top(opstack))) {
-            if (!tryResolveArithmetic())
+            if (!evaluate())
                 pushToken((Token) { .type = arr_pop(opstack) });
         } else {
             break;
@@ -219,12 +219,12 @@ const char* tokenize(const char* str)
 
         default: {
             const char* newPos;
-            if ((newPos = evalSymbol(str)) != str) {
+            if ((newPos = readSymbol(str)) != str) {
                 str = newPos;
                 continue;
             }
 
-            if ((newPos = evalNum(str)) != str) {
+            if ((newPos = readNum(str)) != str) {
                 str = newPos;
                 continue;
             }
@@ -235,7 +235,7 @@ const char* tokenize(const char* str)
     }
 
     while (opstack.size) {
-        if (!tryResolveArithmetic())
+        if (!evaluate())
             pushToken((Token) { .type = arr_pop(opstack) });
     }
 
