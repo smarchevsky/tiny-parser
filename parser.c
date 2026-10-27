@@ -11,6 +11,10 @@
 
 // clang-format off
 typedef enum : uint8_t {
+    EvalResult_Success, EvalResult_Failed
+} EvalResult;
+
+typedef enum : uint8_t {
     TokenType_Invalid, TokenType_Num, TokenType_Symbol, TokenType_Negate,
     TokenType_Sub, TokenType_Add, TokenType_Mul, TokenType_Div,
     TokenType_ParOpen, TokenType_ParClose
@@ -86,40 +90,40 @@ const char* readSymbol(const char* str)
     return str;
 }
 
-bool evaluate()
+EvalResult evaluate()
 {
     if (opstack.size >= 2) {
         if (opstack.data[opstack.size - 1] == TokenType_ParClose
             && opstack.data[opstack.size - 2] == TokenType_ParOpen) {
             arr_pop(opstack);
             arr_pop(opstack);
-            return true;
+            return EvalResult_Success;
         }
     }
 
-    // return false;
+    // return EvalResult_Failed;
 
     if (is_op_unary(arr_top(opstack))) {
         if (tokens.size < 1)
-            return false;
+            return EvalResult_Failed;
 
         if (arr_top(opstack) == TokenType_Negate && arr_top(tokens).type == TokenType_Num) {
             arr_pop(opstack);
             tokens.data[tokens.size - 1].number *= -1;
-            return true;
+            return EvalResult_Success;
         } else
-            return false;
+            return EvalResult_Failed;
     }
 
     if (is_op_binary(arr_top(opstack))) {
         if (tokens.size < 2)
-            return false;
+            return EvalResult_Failed;
 
         Token t0 = tokens.data[tokens.size - 1];
         Token t1 = tokens.data[tokens.size - 2];
         TokenType op = arr_top(opstack);
         if (t0.type != TokenType_Num || t1.type != TokenType_Num)
-            return false;
+            return EvalResult_Failed;
         arr_pop(tokens);
         arr_pop(tokens);
         arr_pop(opstack);
@@ -141,17 +145,18 @@ bool evaluate()
             break;
         }
         pushToken((Token) { .type = TokenType_Num, .number = result });
-        return true;
+        return EvalResult_Success;
     }
 
-    return false;
+    return EvalResult_Failed;
 }
 
 void pushOp(TokenType opNew)
 {
     while (opstack.size) {
         if (get_precedence(opNew) <= get_precedence(arr_top(opstack))) {
-            if (!evaluate())
+            EvalResult evalResult = evaluate();
+            if (evalResult != EvalResult_Success)
                 pushToken((Token) { .type = arr_pop(opstack) });
         } else {
             break;
@@ -235,7 +240,8 @@ const char* tokenize(const char* str)
     }
 
     while (opstack.size) {
-        if (!evaluate())
+        EvalResult evalResult = evaluate();
+        if (evalResult != EvalResult_Success)
             pushToken((Token) { .type = arr_pop(opstack) });
     }
 
