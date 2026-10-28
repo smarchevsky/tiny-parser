@@ -161,7 +161,13 @@ int read_key(int* out_char)
 
 int main(void)
 {
-    char input[MAX_INPUT_LEN] = "-1-(-4)";
+    // -1-(-4)
+    // a+
+    // a+4-b
+    // f-4
+    // a+b
+    // a-(b+c)
+    char input[MAX_INPUT_LEN] = "a-(b+c)";
 #if defined(_DEBUG)
 
     printf("Exp: %s\n", input);
