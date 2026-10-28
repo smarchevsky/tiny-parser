@@ -34,12 +34,13 @@ typedef struct {
 
 
 ARR_DECLARE(TokenStack, Token, 10);
-TokenStack tokens;
+TokenStack stkToken;
 
 ARR_DECLARE(OpHoldingStack, TokenType, 4);
-OpHoldingStack opstack;
+OpHoldingStack stkHold;
 
-void pushToken(Token t) { arr_push(tokens, t); }
+void pushToken(Token t) { arr_push(stkToken, t); }
+void pushHold(TokenType t) { arr_push(stkHold, t); }
 
 int get_precedence(TokenType op)
 {
@@ -92,41 +93,32 @@ const char* readSymbol(const char* str)
 
 EvalResult evaluate()
 {
-    if (opstack.size >= 2) {
-        if (opstack.data[opstack.size - 1] == TokenType_ParClose
-            && opstack.data[opstack.size - 2] == TokenType_ParOpen) {
-            arr_pop(opstack);
-            arr_pop(opstack);
-            return EvalResult_Success;
-        }
-    }
-
     // return EvalResult_Failed;
 
-    if (is_op_unary(arr_top(opstack))) {
-        if (tokens.size < 1)
+    if (is_op_unary(arr_top(stkHold))) {
+        if (stkToken.size < 1)
             return EvalResult_Failed;
 
-        if (arr_top(opstack) == TokenType_Negate && arr_top(tokens).type == TokenType_Num) {
-            arr_pop(opstack);
-            tokens.data[tokens.size - 1].number *= -1;
+        if (arr_top(stkHold) == TokenType_Negate && arr_top(stkToken).type == TokenType_Num) {
+            arr_pop(stkHold);
+            stkToken.data[stkToken.size - 1].number *= -1;
             return EvalResult_Success;
         } else
             return EvalResult_Failed;
     }
 
-    if (is_op_binary(arr_top(opstack))) {
-        if (tokens.size < 2)
+    if (is_op_binary(arr_top(stkHold))) {
+        if (stkToken.size < 2)
             return EvalResult_Failed;
 
-        Token t0 = tokens.data[tokens.size - 1];
-        Token t1 = tokens.data[tokens.size - 2];
-        TokenType op = arr_top(opstack);
+        Token t0 = stkToken.data[stkToken.size - 1];
+        Token t1 = stkToken.data[stkToken.size - 2];
+        TokenType op = arr_top(stkHold);
         if (t0.type != TokenType_Num || t1.type != TokenType_Num)
             return EvalResult_Failed;
-        arr_pop(tokens);
-        arr_pop(tokens);
-        arr_pop(opstack);
+        arr_pop(stkToken);
+        arr_pop(stkToken);
+        arr_pop(stkHold);
         double result = 0.0;
         switch (op) {
         case TokenType_Sub: {
@@ -153,23 +145,23 @@ EvalResult evaluate()
 
 void pushOp(TokenType opNew)
 {
-    while (opstack.size) {
-        if (get_precedence(opNew) <= get_precedence(arr_top(opstack))) {
+    while (stkHold.size && arr_top(stkHold) != TokenType_ParOpen) {
+        if (get_precedence(opNew) <= get_precedence(arr_top(stkHold))) {
             EvalResult evalResult = evaluate();
             if (evalResult != EvalResult_Success)
-                pushToken((Token) { .type = arr_pop(opstack) });
+                pushToken((Token) { .type = arr_pop(stkHold) });
         } else {
             break;
         }
     }
 
-    arr_push(opstack, opNew);
+    pushHold(opNew);
 }
 
 const char* tokenize(const char* str)
 {
-    arr_clear(tokens);
-    arr_clear(opstack);
+    arr_clear(stkToken);
+    arr_clear(stkHold);
 
     while (*str) {
         if (isspace(*str)) {
@@ -179,18 +171,32 @@ const char* tokenize(const char* str)
 
         switch (*str) {
         case '-': {
-            if (str[1] == '-') {
+            if (str[1] == '-')
                 return "unsupported --";
-            }
 
-            if (tokens.size == 0) {
-                pushOp(TokenType_Negate);
+            if (stkToken.size == 0) {
+                pushHold(TokenType_Negate);
                 break;
             }
 
-            TokenType opTop = arr_top(opstack);
+            TokenType opTop = arr_top(stkHold);
             bool mustNegate = is_op_binary(opTop) || opTop == TokenType_ParOpen;
             pushOp(mustNegate ? TokenType_Negate : TokenType_Sub);
+            break;
+        }
+
+        case ')': {
+            while (stkHold.size && arr_top(stkHold) != TokenType_ParOpen) {
+                EvalResult evalResult = evaluate();
+                if (evalResult != EvalResult_Success)
+                    pushToken((Token) { .type = arr_pop(stkHold) });
+            }
+
+            if (stkHold.size == 0) {
+                return "unexpected )";
+            } else if (arr_top(stkHold) == TokenType_ParOpen) {
+                arr_pop(stkHold);
+            }
             break;
         }
 
@@ -213,12 +219,7 @@ const char* tokenize(const char* str)
         }
 
         case '(': {
-            arr_push(opstack, TokenType_ParOpen);
-            break;
-        }
-
-        case ')': {
-            pushOp(TokenType_ParClose);
+            pushHold(TokenType_ParOpen);
             break;
         }
 
@@ -239,10 +240,12 @@ const char* tokenize(const char* str)
         str++;
     }
 
-    while (opstack.size) {
+    while (stkHold.size) {
         EvalResult evalResult = evaluate();
         if (evalResult != EvalResult_Success)
-            pushToken((Token) { .type = arr_pop(opstack) });
+            pushToken((Token) { .type = arr_pop(stkHold) });
+        if (arr_top(stkToken).type == TokenType_ParOpen)
+            return "unexpected (";
     }
 
     return NULL;
@@ -256,14 +259,14 @@ int parse(const char* exp)
         return 1;
     }
 
-    if (tokens.size == 1 && tokens.data[0].type == TokenType_Num) {
+    if (stkToken.size == 1 && stkToken.data[0].type == TokenType_Num) {
         printf("RES: ");
     } else {
         printf("RPN: ");
     }
 
-    for (size_t i = 0; i < tokens.size; ++i) {
-        const Token t = tokens.data[i];
+    for (size_t i = 0; i < stkToken.size; ++i) {
+        const Token t = stkToken.data[i];
 
         // clang-format off
         switch (t.type) {
@@ -282,5 +285,5 @@ int parse(const char* exp)
         printf("  ");
         fflush(stdout);
     }
-    return tokens.size;
+    return stkToken.size;
 }
