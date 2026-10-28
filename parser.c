@@ -284,32 +284,37 @@ int parse(const char* exp)
         return 1;
     }
 
-    if (stkToken.size == 1 && stkToken.data[0].type == TokenType_Num) {
-        printf("RES: ");
-    } else {
-        printf("RPN: ");
+    printf("\n (module\n  (func (export \"function\") ");
+    for (size_t i = 0; i < stkToken.size; ++i) {
+        const Token t = stkToken.data[i];
+        if (t.type == TokenType_Var)
+            printf("(param $%.*s f64) ", (int)t.string.size, t.string.start);
     }
+    printf("(result f64)");
 
     for (size_t i = 0; i < stkToken.size; ++i) {
         const Token t = stkToken.data[i];
 
         // clang-format off
+        printf("\n   ");
         switch (t.type) {
-        case TokenType_Negate: { printf("negate"); } break;
-        case TokenType_Sub:  { printf("sub"); } break;
-        case TokenType_Add:   { printf("add"); } break;
-        case TokenType_Mul:    { printf("mul"); } break;
-        case TokenType_Div:    { printf("div"); } break;
+        case TokenType_Negate: { printf("f64.neg"); } break;
+        case TokenType_Sub:    { printf("f64.sub"); } break;
+        case TokenType_Add:    { printf("f64.add"); } break;
+        case TokenType_Mul:    { printf("f64.mul"); } break;
+        case TokenType_Div:    { printf("f64.div"); } break;
         case TokenType_ParOpen: { printf("("); } break;
         case TokenType_ParClose: { printf(")"); } break;
-        case TokenType_Num:      { printf("%.2f", t.number); } break;
-        case TokenType_Func: { printf("fn:%.*s", (int)t.string.size, t.string.start); } break;
-        case TokenType_Var: { printf("var:%.*s", (int)t.string.size, t.string.start); } break;
+        case TokenType_Num:      { printf("f64.const %.2f", t.number); } break;
+        case TokenType_Func: { printf("call $%.*s", (int)t.string.size, t.string.start); } break;
+        case TokenType_Var: { printf("local.get $:%.*s", (int)t.string.size, t.string.start); } break;
         case TokenType_Invalid: { } break;
         }
         // clang-format on
-        printf("  ");
+
         fflush(stdout);
     }
+
+    printf("\n  )\n )");
     return stkToken.size;
 }
