@@ -35,21 +35,19 @@ typedef struct {
 
 ARR_DECLARE(TokenStack, Token, 10);
 TokenStack stkToken;
-
-ARR_DECLARE(OpHoldingStack, TokenType, 4);
-OpHoldingStack stkHold;
+TokenStack stkHold;
 
 void pushToken(Token t) { arr_push(stkToken, t); }
-void pushHold(TokenType t) { arr_push(stkHold, t); }
+void pushHold(Token t) { arr_push(stkHold, t); }
 
 int get_precedence(TokenType op)
 {
     switch (op) {
-    case TokenType_Add:   return 4;
-    case TokenType_Sub:  return 4;
-    case TokenType_Mul:    return 5;
-    case TokenType_Div:    return 5;
-    case TokenType_Negate: return 20;
+    case TokenType_Add:           return 4;
+    case TokenType_Sub:           return 4;
+    case TokenType_Mul:           return 5;
+    case TokenType_Div:           return 5;
+    case TokenType_Negate:        return 20;
     default:
     assert(false && "no existing precedence for operator");
     exit(1);
@@ -92,13 +90,13 @@ const char* readSymbol(const char* str)
 
 EvalResult evaluate()
 {
-    // return EvalResult_Failed;
+    return EvalResult_Failed;
 
-    if (is_op_unary(arr_top(stkHold))) {
+    if (is_op_unary(arr_top(stkHold).type)) {
         if (stkToken.size < 1)
             return EvalResult_Failed;
 
-        if (arr_top(stkHold) == TokenType_Negate && arr_top(stkToken).type == TokenType_Num) {
+        if (arr_top(stkHold).type == TokenType_Negate && arr_top(stkToken).type == TokenType_Num) {
             arr_pop(stkHold);
             stkToken.data[stkToken.size - 1].number *= -1;
             return EvalResult_Success;
@@ -106,13 +104,13 @@ EvalResult evaluate()
             return EvalResult_Failed;
     }
 
-    if (is_op_binary(arr_top(stkHold))) {
+    if (is_op_binary(arr_top(stkHold).type)) {
         if (stkToken.size < 2)
             return EvalResult_Failed;
 
         Token t0 = stkToken.data[stkToken.size - 1];
         Token t1 = stkToken.data[stkToken.size - 2];
-        TokenType op = arr_top(stkHold);
+        TokenType op = arr_top(stkHold).type;
         if (t0.type != TokenType_Num || t1.type != TokenType_Num)
             return EvalResult_Failed;
         arr_pop(stkToken);
@@ -142,13 +140,13 @@ EvalResult evaluate()
     return EvalResult_Failed;
 }
 
-void pushOp(TokenType opNew)
+void pushOp(Token opNew)
 {
-    while (stkHold.size && arr_top(stkHold) != TokenType_ParOpen) {
-        if (get_precedence(opNew) <= get_precedence(arr_top(stkHold))) {
+    while (stkHold.size && arr_top(stkHold).type != TokenType_ParOpen) {
+        if (get_precedence(opNew.type) <= get_precedence(arr_top(stkHold).type)) {
             EvalResult evalResult = evaluate();
             if (evalResult != EvalResult_Success)
-                pushToken((Token) { .type = arr_pop(stkHold) });
+                pushToken(arr_pop(stkHold));
         } else {
             break;
         }
@@ -174,28 +172,28 @@ const char* tokenize(const char* str)
                 return "unsupported --";
 
             if (stkToken.size == 0) {
-                pushHold(TokenType_Negate);
+                pushHold((Token) { .type = TokenType_Negate });
                 break;
             }
             bool mustNegate = false;
             if (stkHold.size) {
-                TokenType opTop = arr_top(stkHold);
+                TokenType opTop = arr_top(stkHold).type;
                 mustNegate = is_op_binary(opTop) || opTop == TokenType_ParOpen;
             }
-            pushOp(mustNegate ? TokenType_Negate : TokenType_Sub);
+            pushOp((Token) { .type = mustNegate ? TokenType_Negate : TokenType_Sub });
             break;
         }
 
         case ')': {
-            while (stkHold.size && arr_top(stkHold) != TokenType_ParOpen) {
+            while (stkHold.size && arr_top(stkHold).type != TokenType_ParOpen) {
                 EvalResult evalResult = evaluate();
                 if (evalResult != EvalResult_Success)
-                    pushToken((Token) { .type = arr_pop(stkHold) });
+                    pushToken(arr_pop(stkHold));
             }
 
             if (stkHold.size == 0) {
                 return "unexpected )";
-            } else if (arr_top(stkHold) == TokenType_ParOpen) {
+            } else if (arr_top(stkHold).type == TokenType_ParOpen) {
                 arr_pop(stkHold);
             }
             break;
@@ -205,22 +203,22 @@ const char* tokenize(const char* str)
             if (str[1] == '+')
                 return "unsupported ++";
 
-            pushOp(TokenType_Add);
+            pushOp((Token) { .type = TokenType_Add });
             break;
         }
 
         case '*': {
-            pushOp(TokenType_Mul);
+            pushOp((Token) { .type = TokenType_Mul });
             break;
         }
 
         case '/': {
-            pushOp(TokenType_Div);
+            pushOp((Token) { .type = TokenType_Div });
             break;
         }
 
         case '(': {
-            pushHold(TokenType_ParOpen);
+            pushHold((Token) { .type = TokenType_ParOpen });
             break;
         }
 
@@ -244,7 +242,7 @@ const char* tokenize(const char* str)
     while (stkHold.size) {
         EvalResult evalResult = evaluate();
         if (evalResult != EvalResult_Success)
-            pushToken((Token) { .type = arr_pop(stkHold) });
+            pushToken(arr_pop(stkHold));
         if (arr_top(stkToken).type == TokenType_ParOpen)
             return "unexpected (";
     }
