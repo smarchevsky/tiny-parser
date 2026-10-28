@@ -178,9 +178,11 @@ const char* tokenize(const char* str)
                 pushHold(TokenType_Negate);
                 break;
             }
-
-            TokenType opTop = arr_top(stkHold);
-            bool mustNegate = is_op_binary(opTop) || opTop == TokenType_ParOpen;
+            bool mustNegate = false;
+            if (stkHold.size) {
+                TokenType opTop = arr_top(stkHold);
+                mustNegate = is_op_binary(opTop) || opTop == TokenType_ParOpen;
+            }
             pushOp(mustNegate ? TokenType_Negate : TokenType_Sub);
             break;
         }
