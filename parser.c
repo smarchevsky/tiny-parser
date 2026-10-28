@@ -15,9 +15,10 @@ typedef enum : uint8_t {
 } EvalResult;
 
 typedef enum : uint8_t {
-    TokenType_Invalid, TokenType_Num, TokenType_Symbol, TokenType_Negate,
+    TokenType_Invalid, TokenType_Num, TokenType_Negate,
     TokenType_Sub, TokenType_Add, TokenType_Mul, TokenType_Div,
-    TokenType_ParOpen, TokenType_ParClose
+    TokenType_ParOpen, TokenType_ParClose,
+    TokenType_Var, TokenType_Func
 } TokenType;
 
 typedef struct {
@@ -37,6 +38,8 @@ ARR_DECLARE(TokenStack, Token, 10);
 TokenStack stkToken;
 TokenStack stkHold;
 
+String tmpSymbol;
+
 void pushToken(Token t) { arr_push(stkToken, t); }
 void pushHold(Token t) { arr_push(stkHold, t); }
 
@@ -48,6 +51,7 @@ int get_precedence(TokenType op)
     case TokenType_Mul:           return 5;
     case TokenType_Div:           return 5;
     case TokenType_Negate:        return 20;
+    case TokenType_Func:          return 21;
     default:
     assert(false && "no existing precedence for operator");
     exit(1);
@@ -60,6 +64,13 @@ bool is_op_unary(TokenType tokenType) { return tokenType == TokenType_Negate; }
 
 // clang-format on
 
+void makeTmpSymbolVariable()
+{
+    if (tmpSymbol.size) {
+        pushToken((Token) { .type = TokenType_Var, .string = tmpSymbol });
+        tmpSymbol = (String) {};
+    }
+}
 bool isident(char c) { return isalnum(c) || c == '_'; }
 
 const char* readNum(const char* str)
@@ -82,8 +93,7 @@ const char* readSymbol(const char* str)
         while (isident(*str))
             str++;
 
-        pushToken((Token) { .type = TokenType_Symbol, .string = (String) //
-            { .start = strBegin, .size = (size_t)str - (size_t)strBegin } });
+        tmpSymbol = (String) { .start = strBegin, .size = (size_t)str - (size_t)strBegin };
     }
     return str;
 }
@@ -142,6 +152,7 @@ EvalResult evaluate()
 
 void pushOp(Token opNew)
 {
+    makeTmpSymbolVariable();
     while (stkHold.size && arr_top(stkHold).type != TokenType_ParOpen) {
         if (get_precedence(opNew.type) <= get_precedence(arr_top(stkHold).type)) {
             EvalResult evalResult = evaluate();
@@ -184,12 +195,17 @@ const char* tokenize(const char* str)
         }
 
         case '(': {
+            if (tmpSymbol.size) {
+                pushHold((Token) { .type = TokenType_Func, .string = tmpSymbol });
+                tmpSymbol = (String) {};
+            }
             pushHold((Token) { .type = TokenType_ParOpen });
             nextMinusNegate = true;
             break;
         }
 
         case ')': {
+            makeTmpSymbolVariable();
             while (stkHold.size && arr_top(stkHold).type != TokenType_ParOpen) {
                 EvalResult evalResult = evaluate();
                 if (evalResult != EvalResult_Success)
@@ -200,6 +216,7 @@ const char* tokenize(const char* str)
                 return "unexpected )";
 
             } else if (arr_top(stkHold).type == TokenType_ParOpen) {
+
                 arr_pop(stkHold);
                 nextMinusNegate = false;
             }
@@ -246,6 +263,8 @@ const char* tokenize(const char* str)
         str++;
     }
 
+    makeTmpSymbolVariable();
+
     while (stkHold.size) {
         EvalResult evalResult = evaluate();
         if (evalResult != EvalResult_Success)
@@ -284,7 +303,8 @@ int parse(const char* exp)
         case TokenType_ParOpen: { printf("("); } break;
         case TokenType_ParClose: { printf(")"); } break;
         case TokenType_Num:      { printf("%.2f", t.number); } break;
-        case TokenType_Symbol: { printf("%.*s", (int)t.string.size, t.string.start); } break;
+        case TokenType_Func: { printf("fn:%.*s", (int)t.string.size, t.string.start); } break;
+        case TokenType_Var: { printf("var:%.*s", (int)t.string.size, t.string.start); } break;
         case TokenType_Invalid: { } break;
         }
         // clang-format on
