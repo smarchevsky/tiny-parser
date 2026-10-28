@@ -183,6 +183,12 @@ const char* tokenize(const char* str)
             break;
         }
 
+        case '(': {
+            pushHold((Token) { .type = TokenType_ParOpen });
+            nextMinusNegate = true;
+            break;
+        }
+
         case ')': {
             while (stkHold.size && arr_top(stkHold).type != TokenType_ParOpen) {
                 EvalResult evalResult = evaluate();
@@ -217,12 +223,6 @@ const char* tokenize(const char* str)
 
         case '/': {
             pushOp((Token) { .type = TokenType_Div });
-            nextMinusNegate = true;
-            break;
-        }
-
-        case '(': {
-            pushHold((Token) { .type = TokenType_ParOpen });
             nextMinusNegate = true;
             break;
         }
