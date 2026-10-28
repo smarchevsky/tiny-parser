@@ -90,7 +90,7 @@ const char* readSymbol(const char* str)
 
 EvalResult evaluate()
 {
-    return EvalResult_Failed;
+    // return EvalResult_Failed;
 
     if (is_op_unary(arr_top(stkHold).type)) {
         if (stkToken.size < 1)
@@ -159,6 +159,7 @@ const char* tokenize(const char* str)
 {
     arr_clear(stkToken);
     arr_clear(stkHold);
+    bool nextMinusNegate = true;
 
     while (*str) {
         if (isspace(*str)) {
@@ -171,16 +172,14 @@ const char* tokenize(const char* str)
             if (str[1] == '-')
                 return "unsupported --";
 
-            if (stkToken.size == 0) {
+            if (nextMinusNegate) {
                 pushHold((Token) { .type = TokenType_Negate });
-                break;
+
+            } else {
+                pushOp((Token) { .type = TokenType_Sub });
+                nextMinusNegate = true;
             }
-            bool mustNegate = false;
-            if (stkHold.size) {
-                TokenType opTop = arr_top(stkHold).type;
-                mustNegate = is_op_binary(opTop) || opTop == TokenType_ParOpen;
-            }
-            pushOp((Token) { .type = mustNegate ? TokenType_Negate : TokenType_Sub });
+
             break;
         }
 
@@ -193,8 +192,10 @@ const char* tokenize(const char* str)
 
             if (stkHold.size == 0) {
                 return "unexpected )";
+
             } else if (arr_top(stkHold).type == TokenType_ParOpen) {
                 arr_pop(stkHold);
+                nextMinusNegate = false;
             }
             break;
         }
@@ -204,21 +205,25 @@ const char* tokenize(const char* str)
                 return "unsupported ++";
 
             pushOp((Token) { .type = TokenType_Add });
+            nextMinusNegate = true;
             break;
         }
 
         case '*': {
             pushOp((Token) { .type = TokenType_Mul });
+            nextMinusNegate = true;
             break;
         }
 
         case '/': {
             pushOp((Token) { .type = TokenType_Div });
+            nextMinusNegate = true;
             break;
         }
 
         case '(': {
             pushHold((Token) { .type = TokenType_ParOpen });
+            nextMinusNegate = true;
             break;
         }
 
@@ -226,11 +231,13 @@ const char* tokenize(const char* str)
             const char* newPos;
             if ((newPos = readSymbol(str)) != str) {
                 str = newPos;
+                nextMinusNegate = false;
                 continue;
             }
 
             if ((newPos = readNum(str)) != str) {
                 str = newPos;
+                nextMinusNegate = false;
                 continue;
             }
         }
