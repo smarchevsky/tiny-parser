@@ -45,8 +45,6 @@ void pushHold(TokenType t) { arr_push(stkHold, t); }
 int get_precedence(TokenType op)
 {
     switch (op) {
-    case TokenType_ParClose: return 1;
-    case TokenType_ParOpen: return 0;
     case TokenType_Add:   return 4;
     case TokenType_Sub:  return 4;
     case TokenType_Mul:    return 5;
@@ -54,6 +52,7 @@ int get_precedence(TokenType op)
     case TokenType_Negate: return 20;
     default:
     assert(false && "no existing precedence for operator");
+    exit(1);
     return 0;
     }
 }
