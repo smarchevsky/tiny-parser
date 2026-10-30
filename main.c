@@ -179,6 +179,8 @@ int read_key(int* out_char)
 }
 
 void lex(const char* str);
+void printLexed(const char* exp);
+void printIdentifiers();
 
 int main(void)
 {
@@ -191,8 +193,9 @@ int main(void)
     char input[MAX_INPUT_LEN] = "3.333 + a";
 #if defined(_DEBUG)
 
-    printf("Exp: %s\n", input);
+    printf("Exp: \n", );
     lex(input);
+    printLexed(input);
     return 0;
 #endif
 
@@ -218,9 +221,11 @@ int main(void)
             printf("\033[%dA", prev_input_rows);
 
         printf("\r\033[J"); //            clear from start of Input line to the bottom of terminal screen
-        printf("%s%s", PROMPT, input); // render prompt and input
+        printf("%s", PROMPT); // render prompt and input
+        lex(input);
+        printLexed(input);
         printf("\033[s\n"); //            save cursor position RIGHT HERE (at end of input text)
-        lex(input); //           render words on individual lines below
+        printIdentifiers();
         printf("\033[u"); //              restore cursor directly to the end of the input line
 
         // reposition cursor within wrapped input line to match cursor_pos
