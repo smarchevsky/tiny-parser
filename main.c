@@ -79,8 +79,10 @@ enum KeyCode {
     KEY_NONE = 0,
     KEY_LEFT,
     KEY_RIGHT,
-    KEY_UP,
-    KEY_DOWN,
+    // KEY_UP,
+    // KEY_DOWN,
+    KEY_HOME,
+    KEY_END,
     KEY_BACKSPACE,
     KEY_DELETE,
     KEY_ENTER,
@@ -111,6 +113,10 @@ int read_key(int* out_char)
             return KEY_UP;
         case 80:
             return KEY_DOWN;
+        case 71:
+            return KEY_HOME;
+        case 79:
+            return KEY_END;
         case 83:
             return KEY_DELETE;
         default:
@@ -132,10 +138,25 @@ int read_key(int* out_char)
                 return KEY_LEFT;
             case 'C':
                 return KEY_RIGHT;
-            case 'A':
-                return KEY_UP;
-            case 'B':
-                return KEY_DOWN;
+            // case 'A':
+            //     return KEY_UP;
+            // case 'B':
+            //     return KEY_DOWN;
+            case 'H':
+                return KEY_HOME;
+            case 'F':
+                return KEY_END;
+            case '1': // Alternative Home/End sequences (\033[1~ / \033[4~)
+            case '4': {
+                char code = next2;
+                if (has_key_waiting() && get_char() == '~') {
+                    if (code == '1')
+                        return KEY_HOME;
+                    if (code == '4')
+                        return KEY_END;
+                }
+                return KEY_NONE;
+            }
             case '3':
                 if (has_key_waiting() && get_char() == '~') {
                     return KEY_DELETE;
@@ -229,9 +250,9 @@ int main(void)
         } else if (key == KEY_RIGHT) {
             if (cursor_pos < len)
                 cursor_pos++;
-        } else if (key == KEY_UP) {
+        } else if (key == KEY_HOME) {
             cursor_pos = 0;
-        } else if (key == KEY_DOWN) {
+        } else if (key == KEY_END) {
             cursor_pos = len;
         } else if (key == KEY_BACKSPACE) {
             if (cursor_pos > 0) {
