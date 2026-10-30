@@ -31,8 +31,6 @@ int get_terminal_width(void)
 #include <termios.h>
 #include <unistd.h>
 
-#include "parser.h"
-
 static struct termios orig_termios;
 
 void set_raw_mode(int enable)
@@ -159,6 +157,8 @@ int read_key(int* out_char)
     return KEY_NONE;
 }
 
+void lex(const char* str);
+
 int main(void)
 {
     // -1-(-4)
@@ -167,11 +167,11 @@ int main(void)
     // f-4
     // a+b
     // a-(b+c)
-    char input[MAX_INPUT_LEN] = "a-(b+c)";
+    char input[MAX_INPUT_LEN] = "3.333 + a";
 #if defined(_DEBUG)
 
     printf("Exp: %s\n", input);
-    parse(input);
+    lex(input);
     return 0;
 #endif
 
@@ -199,7 +199,7 @@ int main(void)
         printf("\r\033[J"); //            clear from start of Input line to the bottom of terminal screen
         printf("%s%s", PROMPT, input); // render prompt and input
         printf("\033[s\n"); //            save cursor position RIGHT HERE (at end of input text)
-        parse(input); //           render words on individual lines below
+        lex(input); //           render words on individual lines below
         printf("\033[u"); //              restore cursor directly to the end of the input line
 
         // reposition cursor within wrapped input line to match cursor_pos

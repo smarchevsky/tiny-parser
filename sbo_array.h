@@ -2,6 +2,7 @@
 #define SBO_ARRAY_H
 
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 // clang-format off

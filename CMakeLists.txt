@@ -5,7 +5,7 @@ set(CMAKE_C_STANDARD 23)
 
 
 add_executable(TinyParser main.c
-    parser.c parser.h sbo_array.h)
+    parser.c lexer.c sbo_array.h)
 
 include(GNUInstallDirs)
 install(TARGETS TinyParser
