@@ -63,18 +63,20 @@ void lex(const char* str)
                 } break;
 
                 case '*': { // scoped comment
-                    begin = str + 2;
-                    do {
-                        while (*++str && *str != '*') { }
-                    } while (*++str && *str != '/');
-                    type = TokenType_CommentScoped, end = str - 1;
+                    str += 2;
+                    begin = str;
+                    while (*str && !(str[0] == '*' && str[1] == '/'))
+                        ++str;
+
+                    type = TokenType_CommentScoped, end = str;
+                    ++str;
                 } break;
+
                 default:
                     type = TokenType_Div;
                     break;
                 }
             }
-
             ++str;
 
         } else if (isdigit(*str)) {
@@ -120,12 +122,12 @@ void lex(const char* str)
         case TokenType_ParOpen:  { printf("("); } break;
         case TokenType_ParClose: { printf(")"); } break;
 
-        case TokenType_NumFloat: { printf("float:%.*s",  (int)t.size, t.begin); } break;
-        case TokenType_NumInt:   { printf("int:%.*s",    (int)t.size, t.begin); } break;
-        case TokenType_Symbol:   { printf("symbol:%.*s", (int)t.size, t.begin); } break;
+        case TokenType_NumFloat: { printf("float:%.*s(%zu)",  (int)t.size, t.begin, t.size); } break;
+        case TokenType_NumInt:   { printf("int:%.*s(%zu)",    (int)t.size, t.begin, t.size); } break;
+        case TokenType_Symbol:   { printf("symbol:%.*s(%zu)", (int)t.size, t.begin, t.size); } break;
 
-        case TokenType_CommentLine:   { printf("comment_line:%.*s",   (int)t.size, t.begin); } break;
-        case TokenType_CommentScoped: { printf("comment_scoped:%.*s", (int)t.size, t.begin); } break;
+        case TokenType_CommentLine:   { printf("comment_line:%.*s(%zu)",   (int)t.size, t.begin, t.size); } break;
+        case TokenType_CommentScoped: { printf("comment_scoped:%.*s(%zu)", (int)t.size, t.begin, t.size); } break;
 
         case TokenType_Invalid:  { printf("?"); } break;
         }
