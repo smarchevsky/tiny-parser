@@ -57,8 +57,10 @@ void lex(const char* str)
                 switch (str[1]) {
 
                 case '/': { // line comment
-                    begin = str + 2;
-                    while (*++str && *str != '\n') { }
+                    str += 2;
+                    begin = str;
+                    while (*str && *str != '\n')
+                        str++;
                     type = TokenType_CommentLine, end = str;
                 } break;
 
@@ -134,5 +136,6 @@ void lex(const char* str)
         // clang-format on
         printf(" ");
     }
+
     fflush(stdout);
 }
