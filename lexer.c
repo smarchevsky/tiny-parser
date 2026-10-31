@@ -110,15 +110,41 @@ void lex(const char* str)
             ++str;
         }
 
-        if (type != TokenType_Invalid)
-            arr_push(identifiers, (Identifier) { .type = type, .begin = begin, .size = str - begin });
+        arr_push(identifiers, (Identifier) { .type = type, .begin = begin, .size = str - begin });
     }
 }
+
+static const char* ansiColors[] = {
+    "\033[0m", "\033[31m", "\033[32m", "\033[33m", "\033[34m", "\033[35m", "\033[36m", "\033[37m"
+};
+
+static int getTokenColorIndex(TokenType t)
+{
+    // clang-format off
+    int colorIndex = 0;
+    switch (t) {
+    case TokenType_Sub:      { colorIndex = 2; } break;
+    case TokenType_Add:      { colorIndex = 2; } break;
+    case TokenType_Mul:      { colorIndex = 2; } break;
+    case TokenType_Div:      { colorIndex = 2; } break;
+    case TokenType_ParOpen:  { colorIndex = 5; } break;
+    case TokenType_ParClose: { colorIndex = 5; } break;
+    case TokenType_NumFloat: { colorIndex = 4; } break;
+    case TokenType_NumInt:   { colorIndex = 4; } break;
+    case TokenType_Symbol:   { colorIndex = 5; } break;
+    case TokenType_CommentLine:   { colorIndex = 7; } break;
+    case TokenType_CommentScoped: { colorIndex = 7; } break;
+    case TokenType_Invalid:  { colorIndex = 1; } break; }
+    return colorIndex;
+    // clang-format on
+}
+
 void printIdentifiers()
 {
     printf("\n");
     for (size_t i = 0; i < identifiers.size; ++i) {
         const Identifier t = identifiers.data[i];
+        printf("%s", ansiColors[getTokenColorIndex(t.type)]);
         // clang-format off
         switch (t.type) {
         case TokenType_Sub:      { printf("-"); } break;
@@ -147,44 +173,28 @@ void printIdentifiers()
 
 void printLexed(const char* exp)
 {
-    static const char* ansiColors[] = {
-        "\033[0m", "\033[31m", "\033[32m", "\033[33m", "\033[34m", "\033[35m", "\033[36m", "\033[37m"
-    };
+    const char* const colorCodeDefault = ansiColors[0];
 
     if (identifiers.size) {
         const Identifier t0 = identifiers.data[0];
-        printf("%s%.*s", ansiColors[0], (int)(t0.begin - exp), exp);
+        printf("%s%.*s", colorCodeDefault, (int)(t0.begin - exp), exp);
     } else {
-        printf("%s%s", ansiColors[0], exp);
+        printf("%s%s", colorCodeDefault, exp);
     }
     for (size_t i = 0; i < identifiers.size; ++i) {
         const Identifier t0 = identifiers.data[i];
-        // clang-format off
-        int colorIndex = 0;
-        switch (t0.type) {
-        case TokenType_Sub:      { colorIndex = 2; } break;
-        case TokenType_Add:      { colorIndex = 2; } break;
-        case TokenType_Mul:      { colorIndex = 2; } break;
-        case TokenType_Div:      { colorIndex = 2; } break;
-        case TokenType_ParOpen:  { colorIndex = 1; } break;
-        case TokenType_ParClose: { colorIndex = 1; } break;
-        case TokenType_NumFloat: { colorIndex = 4; } break;
-        case TokenType_NumInt:   { colorIndex = 4; } break;
-        case TokenType_Symbol:   { colorIndex = 5; } break;
-        case TokenType_CommentLine:   { colorIndex = 7; } break;
-        case TokenType_CommentScoped: { colorIndex = 7; } break;
-        case TokenType_Invalid:  {} break; }
-        // clang-format on
+        const char* const colorCode = ansiColors[getTokenColorIndex(t0.type)];
+
         if (i == identifiers.size - 1) { // last
-            printf("%s%s", ansiColors[colorIndex], t0.begin);
+            printf("%s%s", colorCode, t0.begin);
         } else {
             const Identifier t1 = identifiers.data[i + 1];
-            printf("%s%.*s", ansiColors[colorIndex], (int)(t0.size), t0.begin);
+            printf("%s%.*s", colorCode, (int)(t0.size), t0.begin);
             const char* t0end = t0.begin + t0.size;
             int gapSize = t1.begin - t0end;
             assert(gapSize >= 0);
-            printf("%s%.*s", ansiColors[0], gapSize, t0end);
+            printf("%s%.*s", colorCodeDefault, gapSize, t0end);
         }
     }
-    printf("%s", ansiColors[0]);
+    printf("%s", colorCodeDefault);
 }
